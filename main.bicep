@@ -1,45 +1,33 @@
-param containerName string = 'ghcontainer'
+@minLength(3)
+@maxLength(11)
+param storagePrefix string
 
-resource containerGroup 'Microsoft.ContainerInstance/containerGroups@2023-05-01' = {
-  name: containerName
+@allowed([
+  'Standard_LRS'
+  'Standard_GRS'
+  'Standard_RAGRS'
+  'Standard_ZRS'
+  'Premium_LRS'
+  'Premium_ZRS'
+  'Standard_GZRS'
+  'Standard_RAGZRS'
+])
+param storageSKU string = 'Standard_LRS'
+
+param location string = resourceGroup().location
+
+var uniqueStorageName = '${storagePrefix}${uniqueString(resourceGroup().id)}'
+
+resource stg 'Microsoft.Storage/storageAccounts@2025-06-01' = {
+  name: uniqueStorageName
   location: location
+  sku: {
+    name: storageSKU
+  }
+  kind: 'StorageV2'
   properties: {
-    osType: 'Linux'
-    containers: [
-      {
-        name: 'app'
-        properties: {
-          image: 'mcr.microsoft.com/azuredocs/aci-helloworld'
-          resources: {
-            requests: {
-              cpu: 1
-              memoryInGB: 1.5
-            }
-          }
-          ports: [
-            {
-              port: 80
-            }
-          ]
-          environmentVariables: [
-            {
-              name: 'ENV'
-              value: 'AZ104'
-            }
-          ]
-        }
-      }
-    ]
-    ipAddress: {
-      type: 'Public'
-      ports: [
-        {
-          protocol: 'TCP'
-          port: 80
-        }
-      ]
-    }
+    supportsHttpsTrafficOnly: true
   }
 }
 
-output fqdn string = containerGroup.properties.ipAddress.fqdn
+output storageEndpoint object = stg.properties.primaryEndpoints
